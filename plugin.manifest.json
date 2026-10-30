@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "SystemStatus-Plugin",
+  "title": "系统状态",
+  "description": "一条指令查看服务器、磁盘、Docker 容器、机器人账号与已加载插件的状态。服务器数据由宿主机上的采集器通过本机 HTTP 接口提供。",
+  "version": "3.0.0",
+  "author": "719083594",
+  "commands": [
+    {
+      "title": "系统状态",
+      "command": "#系统状态",
+      "description": "一张图输出全部状态：服务器、磁盘、Docker、机器人、插件",
+      "permission": "master"
+    }
+  ],
+  "configs": [
+    {
+      "id": "settings",
+      "title": "采集器连接",
+      "file": "config/config.json",
+      "defaults": "config/defaults.json",
+      "reload": "live",
+      "fields": [
+        { "path": "collectorUrl", "label": "采集器地址", "type": "string", "required": true },
+        { "path": "timeoutMs", "label": "等待上限（毫秒）", "type": "integer", "min": 1000, "max": 60000 },
+        { "path": "tokenEnv", "label": "存放 token 的环境变量名", "description": "token 本身不写在插件文件里", "type": "string" },
+        { "path": "timeZone", "label": "显示时区", "type": "string" }
+      ]
+    }
+  ],
+  "capabilities": [
+    { "id": "image-report", "title": "图片版状态报告", "description": "用框架自带的 Chromium 截图", "status": "implemented" },
+    { "id": "text-report", "title": "文字版状态报告", "description": "图片生成失败时自动改发文字", "status": "implemented" }
+  ]
+}

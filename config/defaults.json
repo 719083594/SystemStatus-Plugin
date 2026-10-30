@@ -1,0 +1,6 @@
+{
+  "collectorUrl": "http://host.docker.internal:15090",
+  "timeoutMs": 10000,
+  "tokenEnv": "SYSTEM_STATUS_TOKEN",
+  "timeZone": "Asia/Shanghai"
+}

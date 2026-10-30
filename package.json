@@ -1,44 +1,14 @@
 {
-  "name": "server-status-plugin",
-  "version": "2.0.2",
-  "description": "框架独立的 Linux 服务器状态采集、PNG 看板与安全定时缓存清理；附带 Yunzai 适配。",
+  "name": "systemstatus-plugin",
+  "version": "3.0.0",
+  "description": "系统状态：一条指令查看服务器、Docker、机器人与插件状态",
   "type": "module",
+  "main": "index.js",
+  "private": true,
   "license": "PolyForm-Noncommercial-1.0.0",
   "author": "719083594",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/719083594/ServerStatus-Plugin.git"
-  },
-  "engines": {
-    "node": ">=18"
-  },
-  "main": "./api.mjs",
-  "exports": {".": "./api.mjs", "./core": "./lib/api.mjs", "./yunzai": "./integrations/yunzai/index.js"},
+  "engines": { "node": ">=20" },
   "scripts": {
-    "test": "node --test tests/*.test.mjs"
-  },
-  "files": [
-    "index.js",
-    "api.mjs",
-    "lib",
-    "integrations",
-    "collector/collector.py",
-    "collector/cleanup.py",
-    "collector/config.example.json",
-    "config/plugin.example.json",
-    "config/integration.example.json",
-    "scripts/install.py",
-    "scripts/install-cleanup.py",
-    "scripts/diagnose.py",
-    "scripts/status.py",
-    "docs",
-    "README.md",
-    "LICENSE",
-    "NOTICE",
-    "SECURITY.md",
-    "CHANGELOG.md",
-    "guoba.support.js",
-    "resources",
-    "orangejuice.plugin.json"
-  ]
+    "test": "node --test \"tests/*.test.mjs\" &&python -m unittest discover -s tests -p \"test_*.py\""
+  }
 }

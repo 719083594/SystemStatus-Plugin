@@ -1,23 +1,7 @@
 {
-  "applicationRoot": "/srv/my-application",
-  "ipcDirectory": "/srv/my-application/data/server-status",
-  "fontPath": null,
-  "dockerMode": "auto",
-  "containers": [],
-  "storageDirectories": [],
-  "storageCacheSeconds": 60,
-  "programCacheSeconds": 3600,
-  "cleanup": {
-    "enabled": false,
-    "scheduleTime": "03:30",
-    "pruneUnusedImages": true,
-    "imageAgeHours": 168,
-    "pruneBuildCache": true,
-    "buildCacheAgeHours": 24,
-    "buildCacheKeepGB": 1,
-    "cleanTemporaryFiles": true,
-    "temporaryMaxAgeHours": 168,
-    "cleanRotatedLogs": true,
-    "rotatedLogMaxAgeHours": 336
-  }
+  "bind": "docker0",
+  "port": 15090,
+  "envFile": "/opt/qqbot/.env",
+  "envKey": "SYSTEM_STATUS_TOKEN",
+  "refreshSeconds": 15
 }
