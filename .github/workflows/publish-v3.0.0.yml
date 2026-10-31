@@ -1,0 +1,101 @@
+# One-time v3.0.0 publication on addition of this workflow to main.
+# Does not run for pull requests, and aborts if the tag or release already exists.
+name: Publish SystemStatus-Plugin v3.0.0
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-v3.0.0.yml
+permissions:
+  contents: write
+concurrency:
+  group: systemstatus-publish-v3.0.0
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == '719083594/SystemStatus-Plugin' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Ensure the version and release inputs are correct
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          pkg = json.loads(Path("package.json").read_text())
+          manifest = json.loads(Path("plugin.manifest.json").read_text())
+          collector = Path("collector/collector.py").read_text()
+          assert pkg["version"] == manifest["version"] == "3.0.0"
+          assert "VERSION = '3.0.0'" in collector
+          assert Path("docs/MIGRATION_2_TO_3.md").is_file()
+          assert Path("docs/RELEASE_NOTES_3_0_0.md").is_file()
+          assert Path("LICENSE").read_text().startswith("Required Notice:")
+          print("v3.0.0 metadata, migration, release notes, and license verified")
+          PY
+      - name: Ensure v3.0.0 is not already released or tagged
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v3.0.0 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release v3.0.0 already exists. Refusing to overwrite."
+            exit 1
+          fi
+          if git ls-remote --tags origin refs/tags/v3.0.0 | grep -q .; then
+            echo "::error::Tag v3.0.0 already exists. Refusing to retag."
+            exit 1
+          fi
+      - name: Test source
+        run: |
+          npm test
+          python -m py_compile collector/collector.py
+      - name: Build and verify complete release package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          git archive --format=zip --prefix=SystemStatus-Plugin/ \
+            --output=dist/SystemStatus-Plugin-v3.0.0.zip \
+            "$GITHUB_SHA" \
+            README.md LICENSE index.js package.json plugin.manifest.json \
+            collector config docs lib resources tests
+          unzip -t dist/SystemStatus-Plugin-v3.0.0.zip >/dev/null
+          unzip -q dist/SystemStatus-Plugin-v3.0.0.zip -d "$RUNNER_TEMP/v3-package"
+          for f in LICENSE README.md package.json plugin.manifest.json index.js collector/collector.py config/defaults.json resources/status.html docs/MIGRATION_2_TO_3.md; do
+            test -f "$RUNNER_TEMP/v3-package/SystemStatus-Plugin/$f" || { echo "::error::Missing $f"; exit 1; }
+          done
+          if unzip -Z1 dist/SystemStatus-Plugin-v3.0.0.zip | grep -E '(^|/)(\.env|config/config\.json|node_modules|\.git)(/|$)'; then
+            echo "::error::The release archive contains local config or sensitive paths"
+            exit 1
+          fi
+          (
+            cd "$RUNNER_TEMP/v3-package/SystemStatus-Plugin"
+            npm test
+            python -m py_compile collector/collector.py
+          )
+          (cd dist && sha256sum SystemStatus-Plugin-v3.0.0.zip > SHA256SUMS.txt)
+          cat dist/SHA256SUMS.txt
+      - name: Publish GitHub Release and assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create v3.0.0 \
+            dist/SystemStatus-Plugin-v3.0.0.zip \
+            dist/SHA256SUMS.txt \
+            --target "$GITHUB_SHA" \
+            --title "SystemStatus-Plugin v3.0.0" \
+            --notes-file docs/RELEASE_NOTES_3_0_0.md \
+            --latest \
+            --fail-on-no-commits \
+            --repo "$GITHUB_REPOSITORY"
