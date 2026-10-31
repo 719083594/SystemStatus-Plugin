@@ -29,7 +29,7 @@ SystemStatus-Plugin/
 
 ## 速度
 
-在一台 2 核云服务器上实测：`docker stats` 单次约 2 秒，整套采集约 2.7 秒；Chromium 截一张图约 0.33 秒（机器人重启后第一次另需约 0.7 秒启动浏览器）。采集放在后台后，发指令到出图约 0.35 秒；图上会写明数据采集时间，最多晚 15 秒。
+在一台 2 核云服务器上实测：`docker stats` 单次约 2 秒，整套采集约 2.7 秒；Chromium 截一张图约 0.33 秒（机器人重启后第一次另需约 0.7 秒启动浏览器）。采集放在后台后，发指令到出图约 0.35 秒；图上会写明数据采集时间，正常采样时通常不超过 15 秒；采样失败时可能继续显示更早的快照。
 
 ## 安全
 
@@ -46,6 +46,7 @@ SystemStatus-Plugin/
    ```sh
    echo "SYSTEM_STATUS_TOKEN=$(openssl rand -hex 32)" >> /opt/qqbot/.env && chmod 600 /opt/qqbot/.env
    ```
+   **注意：只在首次创建 token 时运行；重复执行会追加同名变量。已有 `.env` 时先检查并保留其它配置，不要直接重复运行。**
 2. 采集器：把 `collector/collector.py` 放到 `/opt/qqbot/system-status/`，把 `config.example.json` 复制成同目录的 `config.json`（`envFile` 指向第 1 步的文件），再安装并启用服务：
    ```sh
    cp collector/qqbot-system-status.service /etc/systemd/system/
@@ -61,6 +62,10 @@ SystemStatus-Plugin/
      - host.docker.internal:host-gateway
    ```
 5. 主人私聊机器人发 `#系统状态`。
+
+## 从 2.x 升级
+
+**3.0.0 是不兼容重写，不能直接覆盖 2.x 目录。** 旧版独立 CLI、Node API 和定时清理功能已移除。从 2.x 升级前，请先阅读 [迁移指南](docs/MIGRATION_2_TO_3.md) 并备份配置、检查旧定时任务。
 
 ## 更新
 
