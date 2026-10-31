@@ -43,7 +43,20 @@ test("page has every card and is self-contained", () => {
 
 test("footer shows the sample time", () => {
   const html = buildHtml({ host: { ...host, collectedAt: Date.UTC(2026, 9, 30, 16, 23, 45), refreshSeconds: 15 }, bot })
-  assert.ok(html.includes("服务器数据采集于 00:23:45（每 15 秒后台采集）"))
+  assert.ok(html.includes("服务器数据采集于 00:23:45（采集完成后间隔 15 秒）"))
+})
+
+test("page warns about cached sampling failure and incomplete Docker data", () => {
+  const partial = structuredClone(host)
+  partial.collectedAt = Date.now()
+  partial.sampling = {healthy:false,ageSeconds:20,maxAgeSeconds:60}
+  partial.docker.errors = {stats:"CalledProcessError"}
+  partial.docker.containers = [{name:"unknown-container",running:null,restarts:null}]
+  const html = buildHtml({host:partial,bot})
+  for (const expected of ["最近采集失败，显示上次成功数据","Docker 部分数据不可用：容器用量","状态未知","重启 ?次"])
+    assert.ok(html.includes(expected),expected)
+  assert.ok(html.includes("硬盘与存储"))
+  assert.ok(html.includes("机器人"))
 })
 
 test("user-controlled text is escaped", () => {
