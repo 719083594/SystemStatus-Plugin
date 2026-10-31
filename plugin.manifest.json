@@ -3,7 +3,7 @@
   "id": "SystemStatus-Plugin",
   "title": "系统状态",
   "description": "一条指令查看服务器、磁盘、Docker 容器、机器人账号与已加载插件的状态。服务器数据由宿主机上的采集器通过本机 HTTP 接口提供。",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "author": "719083594",
   "commands": [
     {

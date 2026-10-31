@@ -1,0 +1,68 @@
+name: Release plugin
+on:
+  workflow_run:
+    workflows: [Tests]
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: write
+concurrency:
+  group: systemstatus-plugin-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+      - name: Build verified plugin-only package and publish immutable release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$(node -p "require('./plugin.manifest.json').version")" = "$version"
+          tag="v$version"
+          notes="docs/RELEASE_NOTES_$(echo "$version" | tr . _).md"
+          test -f "$notes"
+          if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $tag already exists; preserving its tag and assets."
+            exit 0
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "::error::Tag $tag already exists without a release; refusing to retag."
+            exit 1
+          fi
+          sha=$(git rev-parse HEAD)
+          test "$sha" = "${{ github.event.workflow_run.head_sha }}"
+          mkdir -p dist
+          zip="SystemStatus-Plugin-v$version.zip"
+          git archive --format=zip --prefix=SystemStatus-Plugin/ \
+            --output="dist/$zip" "$sha" \
+            README.md LICENSE index.js package.json plugin.manifest.json \
+            config/defaults.json lib resources "$notes"
+          unzip -t "dist/$zip" >/dev/null
+          if unzip -Z1 "dist/$zip" | grep -E '(^|/)(\.env|config/config\.json|node_modules|\.git|collector|tests)(/|$)'; then
+            echo "::error::Unexpected instance config, dependency or non-plugin path."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/plugin-release"
+          unzip -q "dist/$zip" -d "$RUNNER_TEMP/plugin-release"
+          for file in index.js lib/*.mjs; do
+            node --check "$RUNNER_TEMP/plugin-release/SystemStatus-Plugin/$file"
+          done
+          (cd dist && sha256sum "$zip" > SHA256SUMS.txt)
+          gh release create "$tag" "dist/$zip" dist/SHA256SUMS.txt \
+            --target "$sha" --title "SystemStatus-Plugin $tag" \
+            --notes-file "$notes" --latest --repo "$GITHUB_REPOSITORY"

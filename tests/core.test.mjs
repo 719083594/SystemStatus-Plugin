@@ -6,8 +6,8 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { COMMAND_REG } from "../lib/command.mjs"
 import { loadConfig } from "../lib/config.mjs"
-import { fetchHostStatus } from "../lib/client.mjs"
-import { formatReport, size, duration, timestamp, collectedNote, reclaimText } from "../lib/format.mjs"
+import { fetchHostStatus, validateHostStatus } from "../lib/client.mjs"
+import { formatReport, size, duration, timestamp, collectedNote, reclaimText, accountState } from "../lib/format.mjs"
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const GiB = 1024 ** 3
@@ -116,4 +116,41 @@ test("client sends the token and explains failures", async () => {
   const down = async () => { throw new TypeError("fetch failed") }
   await assert.rejects(fetchHostStatus({ collectorUrl: "http://x:1", token: "abc" }, down), /连接不上采集器/)
   await assert.rejects(fetchHostStatus({ collectorUrl: "http://x:1", token: "" }, ok), /未配置采集器 token/)
+})
+
+test("client rejects incomplete status and malformed JSON safely", async () => {
+  for (const value of [null, [], {}, {...host,host:{...host.host,load:null}},
+    {...host,host:{...host.host,cpuPercent:"1"}}, {...host,docker:{available:true,df:null}}])
+    assert.throws(() => validateHostStatus(value), /数据格式无效/)
+  assert.equal(validateHostStatus(host), host)
+  const broken = async () => ({ok:true,status:200,json:async()=>{throw new SyntaxError("private body")}})
+  await assert.rejects(fetchHostStatus({collectorUrl:"http://x:1",token:"test"},broken),
+    error => error.message === "服务器状态响应不是有效 JSON")
+  const timeout = async () => ({ok:true,status:200,json:async()=>{const e=new Error();e.name="TimeoutError";throw e}})
+  await assert.rejects(fetchHostStatus({collectorUrl:"http://x:1",token:"test"},timeout), /响应超时/)
+})
+
+test("config validates the declared settings", () => {
+  const base = fs.realpathSync(os.tmpdir())
+  const dir = fs.mkdtempSync(path.join(base,"ss-validation-"))
+  try {
+    fs.mkdirSync(path.join(dir,"config"))
+    fs.copyFileSync(path.join(ROOT,"config","defaults.json"),path.join(dir,"config","defaults.json"))
+    for (const value of [null, [], {collectorUrl:"file:///tmp/x"}, {collectorUrl:"not a URL"},
+      {timeoutMs:0}, {timeoutMs:1001.5}, {timeZone:"Invalid/Zone"}, {tokenEnv:""}]) {
+      fs.writeFileSync(path.join(dir,"config","config.json"),JSON.stringify(value))
+      assert.throws(()=>loadConfig(dir,{}))
+    }
+  } finally {
+    assert.ok(fs.realpathSync(dir).startsWith(base+path.sep))
+    fs.rmSync(dir,{recursive:true})
+  }
+})
+
+test("account status separates transport, login and unknown states", () => {
+  assert.equal(accountState({connected:true,online:false}).label,"账号已离线")
+  assert.equal(accountState({connected:false,online:true}).label,"连接已断开")
+  assert.equal(accountState({online:true,good:false}).color,"warn")
+  assert.equal(accountState({connected:true}).color,"warn")
+  assert.equal(accountState({online:true,good:true}).label,"在线")
 })

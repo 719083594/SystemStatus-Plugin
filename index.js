@@ -47,6 +47,9 @@ function botSnapshot() {
       id: String(id),
       nickname: bot.nickname || "",
       adapter: bot.adapter?.name || "",
+      connected: bot.ws ? bot.ws.readyState === 1 : undefined,
+      online: typeof bot.stat?.online === "boolean" ? bot.stat.online : undefined,
+      good: typeof bot.stat?.good === "boolean" ? bot.stat.good : undefined,
       ...(typeof received === "number" ? { received, sent: bot.stat?.sent_msg_cnt ?? 0 } : {}),
     })
   }
@@ -72,15 +75,16 @@ export class SystemStatus extends plugin {
   }
 
   async status(e) {
-    const config = loadConfig(ROOT)
+    let config
     let host
     let hostError
     try {
+      config = loadConfig(ROOT)
       host = await fetchHostStatus(config)
     } catch (error) {
       hostError = error.message
     }
-    const report = { host, hostError, bot: botSnapshot(), timeZone: config.timeZone }
+    const report = { host, hostError, bot: botSnapshot(), timeZone: config?.timeZone || "Asia/Shanghai" }
     let image
     try {
       // TRSS screenshots the page with its own Chromium (puppeteer, falling back to its other renderers).
@@ -93,7 +97,30 @@ export class SystemStatus extends plugin {
     } catch (error) {
       logger.error("[系统状态] 图片生成失败，改发文字", error)
     }
-    await e.reply(image ? segment.image(image) : formatReport(report))
+    if (image) {
+      try {
+        const sent = await e.reply(segment.image(image))
+        // TRSS can return { error: [...] } instead of rejecting. Do not resend
+        // the image when its delivery is uncertain; fall back to plain text.
+        if (sent && !sent.error) return true
+        logger.warn("[系统状态] 图片发送未成功确认，改发文字")
+      } catch (error) {
+        logger.error("[系统状态] 图片发送失败，改发文字", error)
+      }
+    }
+    let text
+    try {
+      text = formatReport(report)
+    } catch (error) {
+      logger.error("[系统状态] 文字报告生成失败", error)
+      text = "系统状态报告暂时无法生成，请稍后重试。"
+    }
+    try {
+      const sent = await e.reply(text)
+      if (!sent || sent.error) logger.error("[系统状态] 文字消息未成功确认")
+    } catch (error) {
+      logger.error("[系统状态] 文字消息发送失败", error)
+    }
     return true
   }
 }
