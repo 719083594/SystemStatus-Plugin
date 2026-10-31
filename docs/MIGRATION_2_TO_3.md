@@ -10,7 +10,6 @@
 | 功能入口 | Linux 独立 CLI、Node API、Yunzai 适配 | TRSS-Yunzai 入口 + Python HTTP 采集器 |
 | 指令 | `#系统`、`#资源`、`#存储`、`#插件`、`#服务`、`#系统帮助` | 仅主人可用的 `#系统状态` |
 | 定时清理 | 可选 cleanup.py + systemd timer | 代码中已移除；**旧任务不会因更新插件而自动停用** |
-| 管理面板 | Guoba / OrangeJuice 相关文件 | `plugin.manifest.json`；无 Guoba 适配 |
 | 最低 Node | 18 | 20 |
 | 采集方式 | 原 CLI / IPC 方案 | 宿主机 `GET /v1/status` + Bearer token；周期性快照 |
 

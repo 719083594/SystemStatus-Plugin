@@ -12,7 +12,7 @@
 - 安装目录改为 `plugins/SystemStatus-Plugin`，新指令为 `#系统状态`；旧版 `#系统`、`#资源`、`#存储`、`#插件`、`#服务` 等指令不再保留。
 - 旧版独立 Linux JSON/PNG CLI、`api.mjs`/Node API 和定时清理功能在 3.0.0 中已移除。
 - 旧 systemd 清理定时任务不会随安装新插件自动停止，请人工核对。
-- 当前针对 **Linux 宿主机 + Docker 中的 TRSS-Yunzai**，要求 Node.js ≥20、Python 3；默认使用宿主机 `docker0` 接口（地址以实际环境为准）。不包含 Guoba 接入。
+- 当前针对 **Linux 宿主机 + Docker 中的 TRSS-Yunzai**，要求 Node.js ≥20、Python 3；默认使用宿主机 `docker0` 接口（地址以实际环境为准）。
 - 安装或迁移前务必备份旧配置、服务单元、环境变量以及 Docker Compose 文件；不要将 token、账号或其他凭据上传到公开仓库。
 
 详细操作：[README](https://github.com/719083594/SystemStatus-Plugin/blob/main/README.md) · [2.x → 3.0 迁移指南](https://github.com/719083594/SystemStatus-Plugin/blob/main/docs/MIGRATION_2_TO_3.md)。
