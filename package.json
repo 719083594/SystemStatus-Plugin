@@ -1,6 +1,6 @@
 {
   "name": "systemstatus-plugin",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "系统状态：一条指令查看服务器、Docker、机器人与插件状态",
   "type": "module",
   "main": "index.js",

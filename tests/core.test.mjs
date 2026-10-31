@@ -80,9 +80,30 @@ test("image reclaim text never trusts Docker's own figure", () => {
 
 test("report says when the background sample was taken", () => {
   const sampled = { ...host, collectedAt: Date.UTC(2026, 9, 30, 16, 23, 45), refreshSeconds: 15 }
-  assert.equal(collectedNote(sampled), "服务器数据采集于 00:23:45（每 15 秒后台采集）")
+  assert.equal(collectedNote(sampled), "服务器数据采集于 00:23:45（采集完成后间隔 15 秒）")
   assert.equal(collectedNote(undefined), "")
-  assert.ok(formatReport({ host: sampled, bot }).endsWith("服务器数据采集于 00:23:45（每 15 秒后台采集）"))
+  assert.ok(formatReport({ host: sampled, bot }).endsWith("服务器数据采集于 00:23:45（采集完成后间隔 15 秒）"))
+})
+
+test("cached failures and partial Docker results are visible in text", () => {
+  const partial = structuredClone(host)
+  partial.collectedAt = Date.now()
+  partial.sampling = {healthy:false,ageSeconds:20,maxAgeSeconds:60,error:"OSError"}
+  partial.docker.errors = {stats:"CalledProcessError",inspect:"CalledProcessError"}
+  partial.docker.truncated = true
+  partial.docker.containers.push({name:"unknown-container",running:null,restarts:null})
+  const text = formatReport({host:partial,bot})
+  for (const expected of ["最近采集失败，显示上次成功数据","Docker 部分数据不可用：容器用量、容器详情",
+    "仅显示前 50 个","unknown-container 状态未知 · 重启 ?"])
+    assert.ok(text.includes(expected),expected)
+  assert.equal(validateHostStatus(partial),partial)
+  for (const sampling of [null,{}, {healthy:"false",ageSeconds:1,maxAgeSeconds:60}])
+    assert.throws(()=>validateHostStatus({...partial,sampling}),/数据格式无效/)
+})
+
+test("expired collector data gets a clear error rather than displaying stale metrics", async () => {
+  const expired = async () => ({ok:false,status:503})
+  await assert.rejects(fetchHostStatus({collectorUrl:"http://x:1",token:"test"},expired),/数据已过期/)
 })
 
 test("collector failure still shows the bot part", () => {
