@@ -1,6 +1,10 @@
 # SystemStatus-Plugin · 系统状态
 
-主人发 `#系统状态`，机器人回复一张图，包含全部状态：服务器（系统、CPU、内存、Swap、负载）、磁盘、Docker（占用与每个容器）、机器人账号、已加载的插件。图片生成失败时自动改发文字版。
+主人发 `#系统状态`，机器人回复一张图，包含全部状态：服务器（系统、CPU、内存、Swap、负载）、磁盘、Docker（占用与每个容器）、机器人账号、已加载的插件。图片生成失败或发送未成功确认时改发文字版，不自动重发图片。
+
+v3.0.1 修复配置或数据异常导致无回复、图片发送失败未降级的问题，并区分账号在线、离线、连接断开和状态未知。缺少宿主机数据时仍显示机器人与插件部分。
+
+GitHub 的插件本体发布包只包含本插件文件，安装到 `plugins/SystemStatus-Plugin/`。采集器安装材料单独位于仓库 `collector/`；只安装插件不会创建系统服务或定时任务。图片临时文件由 TRSS 的渲染器管理。
 
 不依赖任何其他插件。分两部分：
 
@@ -29,7 +33,7 @@ SystemStatus-Plugin/
 
 ## 速度
 
-在一台 2 核云服务器上实测：`docker stats` 单次约 2 秒，整套采集约 2.7 秒；Chromium 截一张图约 0.33 秒（机器人重启后第一次另需约 0.7 秒启动浏览器）。采集放在后台后，发指令到出图约 0.35 秒；图上会写明数据采集时间，正常采样时通常不超过 15 秒；采样失败时可能继续显示更早的快照。
+在一台 2 核云服务器上实测：`docker stats` 单次约 2 秒，整套采集约 2.7 秒；Chromium 截一张图约 0.33 秒（机器人重启后第一次另需约 0.7 秒启动浏览器）。采集放在后台后，发指令到出图约 0.35 秒；图上会写明数据采集时间，最多晚 15 秒。
 
 ## 安全
 
@@ -40,13 +44,14 @@ SystemStatus-Plugin/
 
 ## 安装
 
+**仅安装本体：** 将插件本体 ZIP 解压到 TRSS 的 `plugins/SystemStatus-Plugin/` 即可，不会安装宿主机程序。没有宿主机数据连接时，服务器部分提示不可用，机器人账号与插件信息仍可使用。
+
 要求：Linux 宿主机、Docker、Python 3（只用标准库）；TRSS-Yunzai 跑在 Docker 容器里，并带 Chromium（没有也能用，会改发文字版）。下面的路径是示例，按自己的部署改。
 
 1. 生成 token，写进一个只有 root 能读的 env 文件：
    ```sh
    echo "SYSTEM_STATUS_TOKEN=$(openssl rand -hex 32)" >> /opt/qqbot/.env && chmod 600 /opt/qqbot/.env
    ```
-   **注意：只在首次创建 token 时运行；重复执行会追加同名变量。已有 `.env` 时先检查并保留其它配置，不要直接重复运行。**
 2. 采集器：把 `collector/collector.py` 放到 `/opt/qqbot/system-status/`，把 `config.example.json` 复制成同目录的 `config.json`（`envFile` 指向第 1 步的文件），再安装并启用服务：
    ```sh
    cp collector/qqbot-system-status.service /etc/systemd/system/
@@ -62,10 +67,6 @@ SystemStatus-Plugin/
      - host.docker.internal:host-gateway
    ```
 5. 主人私聊机器人发 `#系统状态`。
-
-## 从 2.x 升级
-
-**3.0.0 是不兼容重写，不能直接覆盖 2.x 目录。** 旧版独立 CLI、Node API 和定时清理功能已移除。从 2.x 升级前，请先阅读 [迁移指南](docs/MIGRATION_2_TO_3.md) 并备份配置、检查旧定时任务。
 
 ## 更新
 

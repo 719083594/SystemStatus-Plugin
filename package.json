@@ -1,6 +1,6 @@
 {
   "name": "systemstatus-plugin",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "系统状态：一条指令查看服务器、Docker、机器人与插件状态",
   "type": "module",
   "main": "index.js",
@@ -9,6 +9,6 @@
   "author": "719083594",
   "engines": { "node": ">=20" },
   "scripts": {
-    "test": "node --test && python -m unittest discover -s tests -p \"test_*.py\""
+    "test": "node --test \"tests/*.test.mjs\" &&python -m unittest discover -s tests -p \"test_*.py\""
   }
 }
